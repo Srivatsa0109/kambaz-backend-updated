@@ -2,23 +2,23 @@ import express from "express";
 import cors from "cors";
 import session from "express-session";
 import dotenv from "dotenv/config";
+import mongoose from "mongoose";
+
 import hello from "./hello.js";
-import lab5 from './Labs/lab5/index.js';                   
-import db from "./Kambaz/Database/index.js";               
-import CoursesRoutes from "./Kambaz/Courses/routes.js";    
-import ModulesRoutes from "./Kambaz/Modules/routes.js";    
-import UserRoutes from "./Kambaz/Users/routes.js";         
+import lab5 from './Labs/lab5/index.js';
+import CoursesRoutes from "./Kambaz/Courses/routes.js";
+import ModulesRoutes from "./Kambaz/Modules/routes.js";
+import UserRoutes from "./Kambaz/Users/routes.js";
 import AssignmentsRoutes from "./Kambaz/Assignments/routes.js";
 import EnrollmentsRoutes from "./Kambaz/Enrollments/routes.js";
 
-const app = express();
+const CONNECTION_STRING = process.env.DATABASE_CONNECTION_STRING;
 
-console.log('===== SERVER STARTED =====');
-console.log('Tony Stark role in DB:', db.users.find(u => u.username === 'iron_man')?.role);
-console.log('Bruce Wayne role in DB:', db.users.find(u => u.username === 'dark_knight')?.role);
-console.log('Total users:', db.users.length);
-console.log('Total courses:', db.courses.length);
-console.log('Total modules:', db.modules.length);
+mongoose.connect(CONNECTION_STRING)
+    .then(() => console.log("✅ Connected to MongoDB Atlas!"))
+    .catch(err => console.error("❌ MongoDB connection error:", err));
+
+const app = express();
 
 app.use(cors({
     credentials: true,
@@ -30,34 +30,33 @@ const sessionOptions = {
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, 
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", 
     }
 };
 
-if (process.env.NODE_ENV === "production") {  
+if (process.env.NODE_ENV === "production") {
     sessionOptions.proxy = true;
-    sessionOptions.cookie = {
-        sameSite: "none",
-        secure: true,
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-        // domain property removed - this was causing the issue
-    };
 }
 
 app.use(session(sessionOptions));
 app.use(express.json());
 
-UserRoutes(app, db);
+
+UserRoutes(app);
 hello(app);
 lab5(app);
-CoursesRoutes(app, db);
-ModulesRoutes(app, db);
-AssignmentsRoutes(app, db);
-EnrollmentsRoutes(app, db);
+CoursesRoutes(app);
+ModulesRoutes(app);
+AssignmentsRoutes(app);
+EnrollmentsRoutes(app);
 
-app.listen(process.env.PORT || 4000, () => {
-    console.log(`Server running on port ${process.env.PORT || 4000} in ${process.env.NODE_ENV || 'development'} mode`);
+const PORT = process.env.PORT || 4000;
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     console.log(`Accepting requests from: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
 });
 
