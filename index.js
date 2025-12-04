@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import session from "express-session";
-import dotenv from "dotenv/config";
 import mongoose from "mongoose";
 
 import hello from "./hello.js";
@@ -22,9 +21,15 @@ const app = express();
 
 app.use(cors({
     credentials: true,
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);        
+        if (origin.includes('localhost')) return callback(null, true);        
+        if (origin === process.env.CLIENT_URL) return callback(null, true);
+        if (origin.includes('vercel.app')) return callback(null, true);        
+        console.log('Blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+    },
 }));
-
 const sessionOptions = {
     secret: process.env.SESSION_SECRET || "kambaz",
     resave: false,
