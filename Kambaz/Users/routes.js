@@ -1,5 +1,6 @@
 import UsersDao from "./dao.js";
 import migrateUsers from "./migration.js";
+import mongoose from "mongoose";
 
 export default function UserRoutes(app) {
   const dao = UsersDao();
@@ -42,9 +43,37 @@ export default function UserRoutes(app) {
   };
 
   const deleteUser = async (req, res) => {
-    const status = await dao.deleteUser(req.params.userId);
-    res.json(status);
+    try {
+      const userId = req.params.userId;
+      console.log("=== DELETE USER ===");
+      console.log("Deleting user:", userId);
+      
+      // 1. Delete all enrollments for this user
+      const enrollmentResult = await mongoose.connection
+        .collection('enrollments')
+        .deleteMany({ user: String(userId) });
+      
+      console.log("Deleted enrollments:", enrollmentResult.deletedCount);
+      
+      // 2. Delete the user
+      const userResult = await dao.deleteUser(userId);
+      console.log("Deleted user:", userResult);
+      
+      res.json({ 
+        message: "User and all related data deleted successfully",
+        deletedEnrollments: enrollmentResult.deletedCount,
+        deletedUser: userResult 
+      });
+      
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ 
+        message: "Failed to delete user",
+        error: error.message 
+      });
+    }
   };
+
 
   const findAllUsers = async (req, res) => {
     const { role, name } = req.query;
@@ -90,7 +119,6 @@ export default function UserRoutes(app) {
         return res.status(400).json({ message: "Username already in use" });
       }
       
-      // Generate _id for new user
       const newUserId = await generateUserId();
       const userData = {
         _id: newUserId,
@@ -127,7 +155,6 @@ export default function UserRoutes(app) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Ensure _id is a string
       const userId = String(user._id);
       
       const userResponse = {
@@ -206,7 +233,6 @@ export default function UserRoutes(app) {
     }
   };
 
-  // Debug endpoint
   app.get("/api/users/debug/:userId", async (req, res) => {
     try {
       const userId = req.params.userId;

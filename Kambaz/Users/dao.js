@@ -1,7 +1,9 @@
 import UserModel from "./model.js"; 
 import CourseModel from "../Courses/model.js"; 
+import EnrollmentModel from "../Enrollments/model.js";
 
 export default function UsersDao() {
+ 
   const createUser = (user) => {
     console.log("DAO: Creating user:", user);
     return UserModel.create(user);
@@ -28,15 +30,22 @@ export default function UsersDao() {
     });
   };
 
+  const findEnrollmentsForUser = async (userId) => {
+        console.log("DAO: Finding enrollments for user:", userId);
+        const enrollments = await model.find({ user: String(userId) });
+        console.log("DAO: Found", enrollments.length, "enrollments:", enrollments);
+        return enrollments;
+    };
+
   const updateUser = (userId, user) =>
     UserModel.updateOne({ _id: userId }, { $set: user });
 
   const deleteUser = (userId) => UserModel.findOneAndDelete({ _id: userId });
 
   const findCoursesForStudent = async (studentId) => {
-    const enrollments = await EnrollmentModel.find({ student: studentId }).populate("course");
-    return enrollments.map(e => e.course);
-  };
+  const enrollments = await EnrollmentModel.find({ user: studentId }).populate("course");
+  return enrollments.map(e => e.course);
+};
 
   const findCoursesForFaculty = (facultyId) => {
     return CourseModel.find({ faculty: facultyId });
